@@ -64,7 +64,7 @@ parser.add_argument('--interpolation_lambda', type=float, default=1.0, help='int
 
 # training/optimization related
 parser.add_argument('--dataset', type=str, default='agedb', choices=['imdb_wiki', 'agedb'], help='dataset name')
-parser.add_argument('--data_dir', type=str, default='./data', help='data directory')
+parser.add_argument('--data_dir', type=str, default='/home/rpu2/scratch/data/imbalanced-regression/agedb/data', help='data directory')
 parser.add_argument('--model', type=str, default='resnet50', help='model name')
 parser.add_argument('--store_root', type=str, default='checkpoint', help='root path for storing checkpoints, logs')
 parser.add_argument('--store_name', type=str, default='', help='experiment store name')
@@ -84,6 +84,7 @@ parser.add_argument('--workers', type=int, default=32, help='number of workers u
 parser.add_argument('--resume', type=str, default='', help='checkpoint file path to resume training')
 parser.add_argument('--pretrained', type=str, default='', help='checkpoint file path to load backbone weights')
 parser.add_argument('--evaluate', action='store_true', help='evaluate only flag')
+parser.add_argument('--norm', action='store_true', help='normlize on the last layer flag')
 
 
 parser.set_defaults(augment=True)
@@ -162,7 +163,7 @@ def main():
     model = resnet50(fds=args.fds, bucket_num=args.bucket_num, bucket_start=args.bucket_start,
                      start_update=args.start_update, start_smooth=args.start_smooth,
                      kernel=args.fds_kernel, ks=args.fds_ks, sigma=args.fds_sigma, momentum=args.fds_mmt,
-                     return_features=(args.regularization_weight > 0))
+                     return_features=(args.regularization_weight > 0), norm=args.norm)
     
     model = torch.nn.DataParallel(model).cuda()
 
