@@ -113,7 +113,7 @@ if args.retrain_fc:
     args.store_name += f'_retrain_fc'
 if args.regularization_weight > 0:
     args.store_name += f'_reg{args.regularization_weight}_il{args.interpolation_lambda}'
-args.store_name = f"{args.dataset}_{args.model}{args.store_name}_{args.optimizer}_{args.loss}_{args.lr}_{args.batch_size}_weight_norm_{args.weight_nrom}_feature_norm_{args.norm}"
+args.store_name = f"{args.dataset}_{args.model}{args.store_name}_{args.optimizer}_{args.loss}_{args.lr}_{args.batch_size}_weight_norm_{args.weight_norm}_feature_norm_{args.norm}"
 
 timestamp = str(datetime.datetime.now())
 timestamp = '-'.join(timestamp.split(' '))
