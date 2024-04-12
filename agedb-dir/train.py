@@ -84,6 +84,7 @@ parser.add_argument('--workers', type=int, default=32, help='number of workers u
 parser.add_argument('--resume', type=str, default='', help='checkpoint file path to resume training')
 parser.add_argument('--pretrained', type=str, default='', help='checkpoint file path to load backbone weights')
 parser.add_argument('--evaluate', action='store_true', help='evaluate only flag')
+#
 parser.add_argument('--norm', action='store_true', help='normlize on the last layer flag')
 parser.add_argument('--weight_norm', action='store_true', help='normlize on the last layer weight flag')
 

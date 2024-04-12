@@ -225,7 +225,7 @@ class Bottleneck(nn.Module):
 class ResNet(nn.Module):
 
     def __init__(self, block, layers, fds, bucket_num, bucket_start, start_update, start_smooth,
-                 kernel, ks, sigma, momentum, dropout=None, return_features=False):
+                 kernel, ks, sigma, momentum, dropout=None, return_features=False, norm=False, weight_norm=False):
         self.inplanes = 64
         super(ResNet, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
@@ -237,8 +237,13 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AvgPool2d(7, stride=1)
-        self.linear = nn.Linear(512 * block.expansion, 1)
-
+        #
+        self.weight_norm = weight_norm
+        if self.weight_norm:
+            self.linear = nn.Linear(512 * block.expansion, 1)
+        else:
+            self.linear = torch.nn.utils.weight_norm(nn.Linear(512 * block.expansion, 1), name='weight')
+        self.norm = norm
         if fds:
             self.FDS = FDS(
                 feature_dim=512 * block.expansion, bucket_num=bucket_num, bucket_start=bucket_start,
@@ -290,6 +295,10 @@ class ResNet(nn.Module):
         x = self.layer4(x)
         x = self.avgpool(x)
         encoding = x.view(x.size(0), -1)
+
+        
+        if self.norm:
+            encoding = F.normalize(encoding, dim=-1)
 
         encoding_s = encoding
 

@@ -83,6 +83,9 @@ parser.add_argument('--workers', type=int, default=32, help='number of workers u
 parser.add_argument('--resume', type=str, default='', help='checkpoint file path to resume training')
 parser.add_argument('--pretrained', type=str, default='', help='checkpoint file path to load backbone weights')
 parser.add_argument('--evaluate', action='store_true', help='evaluate only flag')
+#
+parser.add_argument('--norm', action='store_true', help='normlize on the last layer flag')
+parser.add_argument('--weight_norm', action='store_true', help='normlize on the last layer weight flag')
 
 parser.set_defaults(augment=True)
 args, unknown = parser.parse_known_args()
@@ -158,7 +161,7 @@ def main():
     model = resnet50(fds=args.fds, bucket_num=args.bucket_num, bucket_start=args.bucket_start,
                      start_update=args.start_update, start_smooth=args.start_smooth,
                      kernel=args.fds_kernel, ks=args.fds_ks, sigma=args.fds_sigma, momentum=args.fds_mmt,
-                     return_features=(args.regularization_weight > 0))
+                     return_features=(args.regularization_weight > 0), norm=args.norm, weight_norm=args.weight_norm)
     model = torch.nn.DataParallel(model).cuda()
 
     # evaluate only
