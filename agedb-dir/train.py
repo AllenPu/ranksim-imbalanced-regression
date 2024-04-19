@@ -251,6 +251,7 @@ def main():
     print(f"Loaded best model, epoch {checkpoint['epoch']}, best val loss {checkpoint['best_loss']:.4f}")
     test_loss_mse, test_loss_l1, test_loss_gmean = validate(test_loader, model, train_labels=train_labels, prefix='Test')
     print(f"Test loss: MSE [{test_loss_mse:.4f}], L1 [{test_loss_l1:.4f}], G-Mean [{test_loss_gmean:.4f}]\nDone")
+    print(f' store name is {args.store_name} weight norm  {args.weight_norm}  feature norm {args.norm}')
 
 
 def train(train_loader, model, optimizer, epoch):
