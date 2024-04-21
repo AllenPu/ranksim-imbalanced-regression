@@ -30,6 +30,7 @@ import os
 os.environ["KMP_WARNINGS"] = "FALSE"
 
 from ranksim import batchwise_ranking_regularizer
+from OrdinalEntropy import *
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 # imbalanced related
@@ -86,6 +87,8 @@ parser.add_argument('--evaluate', action='store_true', help='evaluate only flag'
 #
 parser.add_argument('--norm', action='store_true', help='normlize on the last layer flag')
 parser.add_argument('--weight_norm', action='store_true', help='normlize on the last layer weight flag')
+#
+parser.add_argument('--oe', action='store_true', help='enable rdinal entropy')
 
 parser.set_defaults(augment=True)
 args, unknown = parser.parse_known_args()
@@ -161,7 +164,7 @@ def main():
     model = resnet50(fds=args.fds, bucket_num=args.bucket_num, bucket_start=args.bucket_start,
                      start_update=args.start_update, start_smooth=args.start_smooth,
                      kernel=args.fds_kernel, ks=args.fds_ks, sigma=args.fds_sigma, momentum=args.fds_mmt,
-                     return_features=(args.regularization_weight > 0), norm=args.norm, weight_norm=args.weight_norm)
+                     return_features=(args.regularization_weight > 0), norm=args.norm, weight_norm=args.weight_norm, oe=args.oe)
     model = torch.nn.DataParallel(model).cuda()
 
     # evaluate only
@@ -266,7 +269,7 @@ def train(train_loader, model, optimizer, epoch):
         data_time.update(time.time() - end)
         inputs, targets, weights = \
             inputs.cuda(non_blocking=True), targets.cuda(non_blocking=True), weights.cuda(non_blocking=True)
-        if args.regularization_weight > 0:
+        if args.regularization_weight > 0 or args.oe:
             outputs, features = model(inputs, targets, epoch)
         elif args.fds:
             outputs, _ = model(inputs, targets, epoch)
@@ -277,6 +280,8 @@ def train(train_loader, model, optimizer, epoch):
         if args.regularization_weight > 0:
             loss += (args.regularization_weight * batchwise_ranking_regularizer(features, targets, 
                 args.interpolation_lambda))
+        if args.oe:
+            loss += ordinalentropy(features, targets)
         assert not (np.isnan(loss.item()) or loss.item() > 1e6), f"Loss explosion: {loss.item()}"
 
         losses.update(loss.item(), inputs.size(0))
