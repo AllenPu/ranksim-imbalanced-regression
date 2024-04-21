@@ -89,6 +89,9 @@ parser.add_argument('--norm', action='store_true', help='normlize on the last la
 parser.add_argument('--weight_norm', action='store_true', help='normlize on the last layer weight flag')
 #
 parser.add_argument('--oe', action='store_true', help='enable rdinal entropy')
+parser.add_argument('--cal_norm', action='store_true', help='calculate the norm of different shots')
+
+
 
 parser.set_defaults(augment=True)
 args, unknown = parser.parse_known_args()
@@ -164,7 +167,7 @@ def main():
     model = resnet50(fds=args.fds, bucket_num=args.bucket_num, bucket_start=args.bucket_start,
                      start_update=args.start_update, start_smooth=args.start_smooth,
                      kernel=args.fds_kernel, ks=args.fds_ks, sigma=args.fds_sigma, momentum=args.fds_mmt,
-                     return_features=(args.regularization_weight > 0), norm=args.norm, weight_norm=args.weight_norm, oe=args.oe)
+                     return_features=(args.regularization_weight > 0), norm=args.norm, weight_norm=args.weight_norm)
     model = torch.nn.DataParallel(model).cuda()
 
     # evaluate only
@@ -247,7 +250,7 @@ def main():
     checkpoint = torch.load(f"{args.store_root}/{args.store_name}/ckpt.best.pth.tar")
     model.load_state_dict(checkpoint['state_dict'])
     print(f"Loaded best model, epoch {checkpoint['epoch']}, best val loss {checkpoint['best_loss']:.4f}")
-    test_loss_mse, test_loss_l1, test_loss_gmean = validate(test_loader, model, train_labels=train_labels, prefix='Test')
+    test_loss_mse, test_loss_l1, test_loss_gmean = validate(test_loader, model, train_labels=train_labels, prefix='Test', cal_norm=args.cal_norm)
     print(f"Test loss: MSE [{test_loss_mse:.4f}], L1 [{test_loss_l1:.4f}], G-Mean [{test_loss_gmean:.4f}]\nDone")
     #
     print(f' store name is {args.store_name} weight norm  {args.weight_norm}  feature norm {args.norm}')
@@ -269,10 +272,12 @@ def train(train_loader, model, optimizer, epoch):
         data_time.update(time.time() - end)
         inputs, targets, weights = \
             inputs.cuda(non_blocking=True), targets.cuda(non_blocking=True), weights.cuda(non_blocking=True)
-        if args.regularization_weight > 0 or args.oe:
+        if args.regularization_weight > 0:
             outputs, features = model(inputs, targets, epoch)
         elif args.fds:
             outputs, _ = model(inputs, targets, epoch)
+        elif args.oe:
+            outputs, features = model(inputs, targets, epoch, True)
         else:
             outputs = model(inputs, targets, epoch)
   
@@ -312,7 +317,7 @@ def train(train_loader, model, optimizer, epoch):
     return losses.avg
 
 
-def validate(val_loader, model, train_labels=None, prefix='Val'):
+def validate(val_loader, model, train_labels=None, prefix='Val', cal_norm=False):
     batch_time = AverageMeter('Time', ':6.3f')
     losses_mse = AverageMeter('Loss (MSE)', ':.3f')
     losses_l1 = AverageMeter('Loss (L1)', ':.3f')
@@ -329,11 +334,18 @@ def validate(val_loader, model, train_labels=None, prefix='Val'):
     model.eval()
     losses_all = []
     preds, labels = [], []
+    maj_list, med_list, min_list = shot_count(train_labels)
+    maj_shot, med_shot, min_shot = AverageMeter(), AverageMeter(), AverageMeter()
     with torch.no_grad():
         end = time.time()
         for idx, (inputs, targets, _) in enumerate(val_loader):
             inputs, targets = inputs.cuda(non_blocking=True), targets.cuda(non_blocking=True)
-            outputs = model(inputs)
+            if prefix == 'Test' and cal_norm:
+                outputs, features = model(inputs, features_required=True)
+                maj_shot, med_shot, min_shot,  maj_shot_nuc, med_shot_nuc, min_shot_nuc = \
+                    cal_frob_norm(targets, features, maj_list, med_list, min_list, maj_shot, med_shot, min_shot, maj_shot_nuc, med_shot_nuc, min_shot_nuc)
+            else:
+                outputs = model(inputs)
 
             preds.extend(outputs.data.cpu().numpy())
             labels.extend(targets.data.cpu().numpy())
@@ -350,7 +362,7 @@ def validate(val_loader, model, train_labels=None, prefix='Val'):
             end = time.time()
             if idx % args.print_freq == 0:
                 progress.display(idx)
-
+            
         shot_dict = shot_metrics(np.hstack(preds), np.hstack(labels), train_labels)
         loss_gmean = gmean(np.hstack(losses_all), axis=None).astype(float)
         print(f" * Overall: MSE {losses_mse.avg:.3f}\tL1 {losses_l1.avg:.3f}\tG-Mean {loss_gmean:.3f}")
@@ -360,6 +372,10 @@ def validate(val_loader, model, train_labels=None, prefix='Val'):
               f"L1 {shot_dict['median']['l1']:.3f}\tG-Mean {shot_dict['median']['gmean']:.3f}")
         print(f" * Low: MSE {shot_dict['low']['mse']:.3f}\t"
               f"L1 {shot_dict['low']['l1']:.3f}\tG-Mean {shot_dict['low']['gmean']:.3f}")
+        if prefix == 'Test' and cal_norm:
+            print(f' the norm of maj is {maj_shot.avg}, the norm of med is {med_shot.avg}, the norm of low is {min_shot.avg}')
+            print(f' the singular of maj is {maj_shot_nuc.avg}, the norm of med is {med_shot_nuc.avg}, the norm of low is {min_shot_nuc.avg}')
+
 
     return losses_mse.avg, losses_l1.avg, loss_gmean
 

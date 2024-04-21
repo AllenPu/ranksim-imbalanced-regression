@@ -225,7 +225,7 @@ class Bottleneck(nn.Module):
 class ResNet(nn.Module):
 
     def __init__(self, block, layers, fds, bucket_num, bucket_start, start_update, start_smooth,
-                 kernel, ks, sigma, momentum, dropout=None, return_features=False, norm=None, weight_norm=None, oe=None):
+                 kernel, ks, sigma, momentum, dropout=None, return_features=False, norm=None, weight_norm=None):
         self.inplanes = 64
         super(ResNet, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
@@ -240,7 +240,7 @@ class ResNet(nn.Module):
         #
         self.weight_norm = weight_norm
         self.norm = norm
-        self.oe = oe
+        #self.oe = oe
         #
         if self.weight_norm:
             self.linear = nn.Linear(512 * block.expansion, 1)
@@ -285,7 +285,7 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x, targets=None, epoch=None):
+    def forward(self, x, targets=None, epoch=None, features_required=False):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -312,7 +312,9 @@ class ResNet(nn.Module):
             encoding_s = self.dropout(encoding_s)
         x = self.linear(encoding_s)
 
-        if self.training and (self.fds or self.return_features or self.oe):
+        if self.training and (self.fds or self.return_features):
+            return x, encoding
+        elif features_required:
             return x, encoding
         else:
             return x
