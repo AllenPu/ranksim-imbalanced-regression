@@ -313,6 +313,7 @@ class ResNet(nn.Module):
         x = self.linear(encoding_s)
 
         if self.training and (self.fds or self.return_features or self.oe):
+            print(f'-------------------')
             return x, encoding
         else:
             return x
