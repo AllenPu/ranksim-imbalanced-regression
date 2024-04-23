@@ -10,8 +10,8 @@
 #echo 'RankSim and LDS + FDS + SQRT weight norm'
 # Apl-23
 #python train.py --batch_size 256 --lr 2.5e-4 --regularization_weight=100.0 --interpolation_lambda=2.0 --norm
-#echo ' RankSim and norm' # tmux 3
-python train.py --batch_size 256 --lr 2.5e-4 --regularization_weight=100.0 --interpolation_lambda=2.0 --weight_norm
-echo ' RankSim and weight norm'  # tmux 4
-#python train.py --batch_size 256 --lr 2.5e-4 --regularization_weight=100.0 --interpolation_lambda=2.0 --weight_norm --norm
-#echo ' RankSim and weight norm and feature norm'  #tmux 5
+#echo ' RankSim and norm' 
+#python train.py --batch_size 256 --lr 2.5e-4 --regularization_weight=100.0 --interpolation_lambda=2.0 --weight_norm
+#echo ' RankSim and weight norm'  # tmux 4
+python train.py --batch_size 256 --lr 2.5e-4 --regularization_weight=100.0 --interpolation_lambda=2.0 --weight_norm --norm
+echo ' RankSim and weight norm and feature norm'  #tmux 5
