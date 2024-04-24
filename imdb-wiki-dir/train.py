@@ -24,7 +24,7 @@ from torch.utils.data import DataLoader
 from loss import *
 from utils import *
 from resnet import resnet50
-from datasets import IMDBWIKI
+from datasets import IMDBWIKI, shot_count
 
 import os
 os.environ["KMP_WARNINGS"] = "FALSE"
