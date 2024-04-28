@@ -25,7 +25,7 @@ from loss import *
 from utils import *
 from datasets import AgeDB
 from resnet import resnet50
-
+import csv
 from ranksim import batchwise_ranking_regularizer
 
 import os
@@ -87,6 +87,7 @@ parser.add_argument('--evaluate', action='store_true', help='evaluate only flag'
 #
 parser.add_argument('--norm', action='store_true', help='normlize on the last layer flag')
 parser.add_argument('--weight_norm', action='store_true', help='normlize on the last layer weight flag')
+parser.add_argument('--file_name', type=str, default='', help='method of addressing imbalance')
 
 
 parser.set_defaults(augment=True)
@@ -314,7 +315,7 @@ def train(train_loader, model, optimizer, epoch):
     return losses.avg
 
 
-def validate(val_loader, model, train_labels=None, prefix='Val'):
+def validate(val_loader, model, args=None, train_labels=None, prefix='Val'):
     batch_time = AverageMeter('Time', ':6.3f')
     losses_mse = AverageMeter('Loss (MSE)', ':.3f')
     losses_l1 = AverageMeter('Loss (L1)', ':.3f')
@@ -331,6 +332,10 @@ def validate(val_loader, model, train_labels=None, prefix='Val'):
     model.eval()
     losses_all = []
     preds, labels = [], []
+    #
+    maj_shot, med_shot, min_shot = shot_count(train_labels)
+    pred, label = [], []
+    #
     with torch.no_grad():
         end = time.time()
         for idx, (inputs, targets, _) in enumerate(val_loader):
@@ -348,11 +353,21 @@ def validate(val_loader, model, train_labels=None, prefix='Val'):
             losses_mse.update(loss_mse.item(), inputs.size(0))
             losses_l1.update(loss_l1.item(), inputs.size(0))
 
+            pred.extend(outputs.cpu().numpy())
+            label.extend(targets.cpu().numpy())
+
             batch_time.update(time.time() - end)
             end = time.time()
             if idx % args.print_freq == 0:
                 progress.display(idx)
-
+        #
+        _, _, _, min_to_med, min_to_maj, med_to_maj,med_to_min, maj_to_min,maj_to_med = shot_reg(label, pred, maj_shot, med_shot, min_shot)
+        print(f'min_to_med {min_to_med}, min_to_maj {min_to_maj}, med_to_maj {med_to_maj}, med_to_min {med_to_min}, maj_to_min {maj_to_min}, maj_to_med {maj_to_med}')
+        if args.file_name != '':
+            with open(f'{args.file_name}.csv', 'a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([min_to_med, min_to_maj, med_to_maj,med_to_min, maj_to_min,maj_to_med])
+        
         shot_dict = shot_metrics(np.hstack(preds), np.hstack(labels), train_labels)
         loss_gmean = gmean(np.hstack(losses_all), axis=None).astype(float)
         print(f" * Overall: MSE {losses_mse.avg:.3f}\tL1 {losses_l1.avg:.3f}\tG-Mean {loss_gmean:.3f}")
