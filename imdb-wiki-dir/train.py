@@ -24,7 +24,7 @@ from torch.utils.data import DataLoader
 from loss import *
 from utils import *
 from resnet import resnet50
-from datasets import IMDBWIKI
+from datasets import IMDBWIKI, shot_count
 
 import os
 os.environ["KMP_WARNINGS"] = "FALSE"
@@ -335,7 +335,8 @@ def validate(val_loader, model, train_labels=None, prefix='Val', cal_norm=False)
     losses_all = []
     preds, labels = [], []
     maj_list, med_list, min_list = shot_count(train_labels)
-    maj_shot, med_shot, min_shot = AverageMeter(), AverageMeter(), AverageMeter()
+    maj_shot, med_shot, min_shot = \
+        AverageMeter('majority norm', ':6.3f'), AverageMeter('median norm', ':6.3f'), AverageMeter('minority norm', ':6.3f')
     with torch.no_grad():
         end = time.time()
         for idx, (inputs, targets, _) in enumerate(val_loader):
