@@ -192,7 +192,6 @@ def check_shot(e, maj, med, min):
 
 def int_tensors(pred):
     pred = torch.Tensor(pred).unsquueze(-1)
-    pred = pred - torch.floor(pred)
     zero = torch.zeros_like(pred)
     one = torch.ones_like(pred)
     diff = pred - torch.floor(pred)
